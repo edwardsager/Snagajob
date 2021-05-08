@@ -1,7 +1,7 @@
 function ajaxJSON(url, data, callback) {
     var xmlhttp = new XMLHttpRequest();
-    let urlGet = url + '?';
-    let delim = '';
+    let urlGet = url;
+    let delim = '?';
     for (var key in data) {
         urlGet += delim + key + '=' + data[key];
         delim = '&';

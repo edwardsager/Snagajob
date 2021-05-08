@@ -20,6 +20,9 @@
                     document.querySelector('#error').style.display = 'block';
                 } else if (data.redirect) {
                     window.location = data.redirect;
+                } else {
+                    document.querySelector('#error').innerHTML = '';
+                    document.querySelector('#error').style.display = 'none';
                 }
             });
         }
@@ -39,7 +42,7 @@
         </tr>
         <tr>
             <td class=login-label>E-Mail address:</td>
-            <td class=login-value><input id=password class=login-input type=password value='Password1'></td>
+            <td class=login-value><input id=password class=login-input type=text value='Test123'></td>
         </tr>
         <tr>
             <td colspan=2 style="padding:10px 0px 0px 0px">For new logins, enter the data below</td>

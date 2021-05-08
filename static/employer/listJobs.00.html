@@ -1,0 +1,32 @@
+<html>
+
+<head>
+    <titleEmployer Job List</title>
+    <link rel="stylesheet" href="/index.00.css">
+    <script type="text/javascript" src="/js/ajax.js"></script>
+    <script type="text/javascript" src="/js/md5.js"></script>
+    <script>
+        function logout(){
+            let data = {};
+            ajaxJSON('/api/employer/logout', data, function(data) {
+                console.log(data);
+                if (data.redirect) {
+                    window.location = data.redirect;
+                }
+            });
+        }
+    </script>
+</head>
+
+<body>
+    <h1>Employer Job List</h1>
+    <div styel="text-align:center;">
+    <input type=button value='Log Out' onClick="logout()">
+    <br>
+    <h2 id=error style="display:none;color:red">
+    </h2>
+    <table class=login-table>
+    </table>
+</body>
+
+</html>
