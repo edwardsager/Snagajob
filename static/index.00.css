@@ -1,3 +1,21 @@
 h1 {
-    color:red;
+    color: purple;
+    text-align: center;
+}
+
+h2 {
+    color: green;
+    text-align: center;
+}
+
+.login-label {
+    text-align: right;
+}
+
+.login-value {
+    text-align: left;
+}
+
+.login-input {
+    width: 100%;
 }
