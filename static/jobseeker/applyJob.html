@@ -1,0 +1,138 @@
+<html>
+
+<head>
+	<title>Employer Job List</title>
+	<link rel="stylesheet" href="/index.00.css">
+	<script type="text/javascript" src="/js/ajax.js"></script>
+	<script type="text/javascript" src="/js/md5.js"></script>
+	<script type="text/javascript" src="/js/queryParse.js"></script>
+	<script>
+
+		function logout() {
+			var data = {};
+			ajaxJSON('/api/logout', data, function (data) {
+				console.log(data);
+				if (data.redirect) {
+					window.location = data.redirect;
+				}
+			});
+		}
+
+		function submitApplication() {
+			console.log('submitApplication');
+			var inputs = document.querySelectorAll('#question-table input');
+			// console.log(inputs);
+			// console.log(document.querySelector('#job-id'));
+			// console.log(document.querySelector('#job-id').value);
+			var data = { idJob:document.querySelector('#job-id').value };
+			for (var i in inputs) {
+				var inp = inputs[i];
+				//console.log(inp);
+				var tag = inp.tagName;
+				//console.log(tag);
+				if (tag && tag.match(/input/i)) {
+					var answer = inp.value;
+					var questionId = inp.getAttribute('id_question');
+					data[questionId] = answer;
+				}
+			}
+			//console.log(data);
+			ajaxJSON('/api/jobseeker/applyJob', data, function (data) {
+				console.log(data);
+				document.querySelector('#final-result').innerHTML = data.finalResult;
+				document.querySelector('#final-result').style.display = 'table';
+				if (data?.finalResult?.match(/accepted/i)) {
+					document.querySelector('#final-result').style.color = 'green';
+				}
+				else {
+					document.querySelector('#final-result').style.color = 'red';
+				}
+				for (var i in data.answers) {
+					var answer = data.answers[i];
+					var id = answer.idQuestion;
+					var result = answer.result;
+					var rejected = false;
+					if (result.match(/ok/i)) {
+						document.querySelector('#question_'+id).style['background-color'] = 'lightgreen';
+					}
+					else {
+						document.querySelector('#question_'+id).style['background-color'] = 'pink';
+						rejected = true;
+					}
+				}
+			});
+		}
+
+		function clearBackground(self){
+			self.style['background-color'] = 'white';
+		}
+
+		function showJobQuestions(idJob) {
+			var table = document.querySelector('#question-table');
+			table.innerHTML = '';
+			var data = { idJob: idJob }
+			document.querySelector('#job-id').value = idJob;
+			ajaxJSON('/api/employer/listJobQuestions', data, function (data) {
+				console.log(data);
+				document.querySelector('#employer-name').innerHTML = data.dataJob.name_employer;
+				document.querySelector('#job-title').innerHTML = data.dataJob.title;
+				document.querySelector('#job-description').innerHTML = data.dataJob.description;
+				table.style.width = '100%';
+				if (data?.data?.length) {
+					for (var i in data.data) {
+						var d = data.data[i];
+						console.log(d);
+						var trq = table.insertRow(-1);
+						trq.style['background-color'] = '#b0b0b0';
+						var td0 = trq.insertCell(-1);
+						td0.innerHTML = d.question;
+						td0.style.width = '70%';
+
+						var tra = table.insertRow(-1);
+						var tda = tra.insertCell(-1);
+						var inp = document.createElement('INPUT');
+						inp.setAttribute('id','question_'+d.id);
+						inp.style.width = '100%';
+						inp.style['background-color'] = 'white';
+						inp.setAttribute('type','text');
+						tda.appendChild(inp);
+						inp.setAttribute('id_job', data.idJob)
+						inp.setAttribute('id_question', d.id)
+						inp.setAttribute('onfocus','clearBackground(this)')
+					}
+				}
+			});
+		}
+
+		var queryParameters = parseQueryParams();
+
+		document.addEventListener("DOMContentLoaded", function () {
+			queryParameters = parseQueryParams();
+			console.log(queryParameters);
+			showJobQuestions(queryParameters.params.jobId);
+		});
+	</script>
+</head>
+
+<body>
+	<input id=job-id type=hidden>
+	<table style="width:100%;font-family:verdana;background-color:rgb(223, 248, 223);border-collapse:separate">
+		<tr>
+			<td style="width:15%"><input type=button value='Apply' onClick="submitApplication()"></p>
+			<td style="width:70%;text-align:center">
+				<h1>Job Application</h1><p id=employer-name>Employer Name</p><p id=job-title>Job Title</p><p id=job-description>Job Title</h4>
+			</td>
+			<td style="width:15%;text-align:right"><input type=button value='Log Out' onClick="logout()"></td>
+		</tr>
+	</table>
+	<br>
+	<h2 id=error style="display:none;color:red">
+	</h2>
+	<h2 id=final-result style="display:none;color:red;text-align:center;width:100%">
+	</h2>
+
+	<table id=question-table style="width:100%">
+	</table>
+</body>
+
+</html>
