@@ -1,7 +1,7 @@
 <html>
 
 <head>
-    <title>Employer Job List</title>
+    <title>Job saerch</title>
     <link rel="stylesheet" href="/index.00.css">
     <script type="text/javascript" src="/js/ajax.js"></script>
     <script type="text/javascript" src="/js/md5.js"></script>
@@ -31,7 +31,7 @@
             var idJob = tr.getAttribute('id_job');
             console.log(idJob);
             var data = { idJob:idJob }
-            ajaxJSON('/api/employer/listJobQuestions', data, function(data) {
+            ajaxJSON('/api/jobseeker/listJobQuestions', data, function(data) {
                 console.log(data);
                 var tr2 = document.querySelector('#job_questions_'+idJob);
                 console.log(tr2);
@@ -66,13 +66,13 @@
             });
         }
 
-        function showJobs(){
-            console.log('showJobs()');
+        function searchJobs(){
+            console.log('searchJobs()');
             var data = {};
-            ajaxJSON('/api/employer/listJobs', data, function(data) {
+            ajaxJSON('/api/jobseeker/searchJobs', data, function(data) {
                 console.log(data);
-                if (data.session && data.session.name_employer) {
-                    document.querySelector('#employer-name').innerHTML = data.session && data.session.name_employer;
+                if (data.session && (data.session.name_first || data.session.name_last)) {
+                    document.querySelector('#jobseeker-name').innerHTML = data.session.name_first + ' ' + data.session.name_last;
                 }
                 if (data.redirect) {
                     window.location = data.redirect;
@@ -112,7 +112,7 @@
         }
 
         document.addEventListener("DOMContentLoaded", function() {
-            showJobs();
+            searchJobs();
         });
     </script>
 </head>
@@ -121,7 +121,7 @@
     <table style="width:100%;font-family:verdana;background-color:rgb(223, 248, 223);border-collapse:separate">
         <tr>
             <td style="width:15%"><input type=button value='Add Job' onClick="addJob()"></td>
-            <td style="width:70%;text-align:center"><h1>Employer Job List</h1><span id=employer-name>Employer Name</span></td>
+            <td style="width:70%;text-align:center"><h1>Job Search</h1><span id=jobseeker-name>Job Seeker Name</span></td>
             <td style="width:15%;text-align:right"><input type=button value='Log Out' onClick="logout()"></td>
         </tr>
     </table>

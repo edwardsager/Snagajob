@@ -1,7 +1,7 @@
 <html>
 
 <head>
-    <title>Test a Job Employer Login</title>
+    <title>Test Employer Login</title>
     <link rel="stylesheet" href="/index.00.css">
     <script type="text/javascript" src="/js/ajax.js"></script>
     <script type="text/javascript" src="/js/md5.js"></script>
@@ -9,7 +9,7 @@
         function submitLogin(self) {
             var data = {};
             data.emailAddress = document.querySelector('#email-address').value;
-            data.password = md5(data.emailAddress.trim().toLowerCase() + document.querySelector('#password').value);
+            data.password = md5(data.emailAddress.trim().toLowerCase() + document.querySelector('#password').value.trim());
             data.nameFirst = document.querySelector('#name-first').value;
             data.nameLast = document.querySelector('#name-last').value;
             console.log(data);

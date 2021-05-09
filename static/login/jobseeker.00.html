@@ -1,7 +1,7 @@
 <html>
 
 <head>
-    <title>Test Employer Login</title>
+    <title>Test Job Seeker Login</title>
     <link rel="stylesheet" href="/index.00.css">
     <script type="text/javascript" src="/js/ajax.js"></script>
     <script type="text/javascript" src="/js/md5.js"></script>
@@ -9,11 +9,13 @@
         function submitLogin(self) {
             var data = {};
             data.emailAddress = document.querySelector('#email-address').value;
-            data.password = md5(data.emailAddress.trim().toLowerCase() + document.querySelector('#password').value.trim());
+            var passwordString = data.emailAddress.trim().toLowerCase() + document.querySelector('#password').value.trim();
+            //data.passwordString = passwordString;
+            data.password = md5(passwordString);
             data.nameFirst = document.querySelector('#name-first').value;
             data.nameLast = document.querySelector('#name-last').value;
             console.log(data);
-            ajaxJSON('/api/employer/login', data, function(data) {
+            ajaxJSON('/api/jobseeker/login', data, function(data) {
                 console.log(data);
                 if (data.error) {
                     document.querySelector('#error').innerHTML = data.error;
@@ -30,14 +32,14 @@
 </head>
 
 <body>
-    <h1>Employer Login</h1>
+    <h1>Job Seeker Login</h1>
     <br>
     <h2 id=error style="display:none;color:red">
     </h2>
     <table class=login-table>
         <tr>
             <td class=login-label>E-Mail address:</td>
-            <td class=login-value><input id=email-address class=login-input type=text value='ed@sagers.org'>
+            <td class=login-value><input id=email-address class=login-input type=text value='ed.sager@gmail.com'>
             </td>
         </tr>
         <tr>

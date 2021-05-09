@@ -48,7 +48,7 @@ function handlerPromisified(req, res) {
             tracer.log(req.urlParsed.path);
             // check for a session id in cookies, then look it up , then determine if employer or user
             if (req?.headers?.cookies?.Snagajob_sessionId) {
-                let sql = `select * from person where id_session = '${req.headers.cookies.Snagajob_sessionId}'::uuid`;
+                let sql = `select * from person left outer join employer on person.id_employer = employer.id where person.id_session = '${req.headers.cookies.Snagajob_sessionId}'::uuid`;
                 tracer.log(sql);
                 let data = await pool.query(sql);
                 if (data?.rows?.length) { // found them 
@@ -60,6 +60,9 @@ function handlerPromisified(req, res) {
                 if (req?.session?.login_type?.match(/EMPLOYER/)) {
                     req.urlParsed.path = '/employer/listJobs.html';
                 }
+                if (req?.session?.login_type?.match(/JOBSEEKER/)) {
+                    req.urlParsed.path = '/jobseeker/searchJobs.html';
+                }
                 else {
                   req.urlParsed.path = '/index.html';
                 }
@@ -69,7 +72,9 @@ function handlerPromisified(req, res) {
             let staticFullPath = staticDir + req.urlParsed.path;
             tracer.log(staticFullPath);
             if (endpoints[req.urlParsed.path] && typeof endpoints[req.urlParsed.path] == 'function') {
-                await endpoints[req.urlParsed.path](req, res);
+                tracer.log(`Calling endpoint '${req.urlParsed.path}'`);
+                let result = await endpoints[req.urlParsed.path](req, res);
+                tracer.log(result);
                 resolve();
                 return;
                 // logging here
@@ -85,7 +90,7 @@ function handlerPromisified(req, res) {
                         return;
                     } catch (error) {
                         tracer.log(error.message + "\n" + error.stack);
-                        //res.writeHead(500);
+                        res.writeHead(500);
                         res.end(error.message);
                         resolve();
                         return;
@@ -109,8 +114,10 @@ function handlerPromisified(req, res) {
             }
         } catch (error) {
             tracer.log(error.message + "\n" + error.stack);
-            res.setHeader("Content-Type", "text/plain");
-            res.writeHead(500);
+            if (! res.headersSent) {
+                res.setHeader("Content-Type", "text/plain");
+                res.writeHead(500);
+            }
             res.end(error.message + "\n" + error.stack);
             resolve();
             return;
@@ -120,9 +127,12 @@ function handlerPromisified(req, res) {
 
 let endpoints = {
     '/api/url': url,
+    '/api/logout': logout,
     '/api/employer/login': loginEmployer,
-    '/api/employer/logout': logoutEmployer,
     '/api/jobseeker/login': loginJobSeeker,
+    '/api/employer/listJobs': listJobs,
+    '/api/employer/listJobQuestions': listJobQuestions,
+    '/api/jobseeker/searchJobs': searchJobs,
 }
 
 async function url(req, res) {
@@ -132,11 +142,145 @@ async function url(req, res) {
     return;
 }
 
-async function logoutEmployer(req,res) {
+async function logout(req,res) {
     res.setHeader("Set-Cookie", `Snagajob_sessionId=deleted; Domain=.sagers.org; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT`);
     res.setHeader("Content-Type", "application/json");
     res.writeHead(200);
     let result = { result: 'OK', redirect: '/' };
+    res.end(JSON.stringify(result, null, 4));
+    return;
+}
+
+async function listJobs(req,res) {
+    res.setHeader("Content-Type", "application/json");
+    res.writeHead(200);
+    let result = { result: 'OK', session: req.session };
+    let sql = `select * from jobs where id_employer = '${req.session.id_employer}'::uuid`;
+    tracer.log(sql);
+    let data = await pool.query(sql);
+    tracer.log(JSON.stringify(data,null,4))
+    if (data?.rows?.length) { // found them 
+        result.data = data.rows;
+    }
+    tracer.log(JSON.stringify(result,null,4))
+    res.end(JSON.stringify(result, null, 4));
+    return;
+}
+
+async function searchJobs(req,res) {
+    let result = { result: 'OK', session: req.session };
+    let sql = `select * from jobs`;
+    tracer.log(sql);
+    let data = await pool.query(sql);
+    tracer.log(JSON.stringify(data,null,4))
+    if (data?.rows?.length) { // found them 
+        result.data = data.rows;
+    }
+    tracer.log(JSON.stringify(result,null,4))
+    res.setHeader("Content-Type", "application/json");
+    res.writeHead(200);
+    res.end(JSON.stringify(result, null, 4));
+    return;
+}
+
+async function listJobQuestions(req,res) {
+    try {
+        let result = { result: 'OK', session: req.session };
+        let sql = `select * from job_questions where id_job = '${req?.urlParsed?.params?.idJob}'::uuid`;
+        tracer.log(sql);
+        let data = await pool.query(sql);
+        tracer.log(JSON.stringify(data,null,4))
+        if (data?.rows?.length) { // found them 
+            result.data = data.rows;
+        }
+        result.idJob = req.urlParsed.params.idJob;
+        tracer.log(JSON.stringify(result,null,4))
+        res.setHeader("Content-Type", "application/json");
+        res.writeHead(200);
+        res.end(JSON.stringify(result, null, 4));
+        return;
+    }
+    catch(error) {
+        //tracer.log(error.message + "\n" + error.stack);
+        res.setHeader("Content-Type", "application/json");
+        res.writeHead(200);
+        res.end(JSON.stringify({ result:'FAIL',error:error.message, stack:error.stack },null,4));
+        return;
+    }
+}
+
+async function loginJobSeeker(req, res) {
+    tracer.log('loginJobSeeker');
+    let result = { result: 'OK', url: req.urlParsed, headers: req.headers };
+    try {
+        if (!req.urlParsed.params.emailAddress.match(/@/)) {
+            result.result = 'FAIL';
+            result.error = "E-Mail Address doesn't look right, it's missing an @";
+        } else if (req.urlParsed.params.emailAddress.trim().match(/\s/)) {
+            result.result = 'FAIL';
+            result.error = "E-Mail Address doesn't look right, it's got spaces";
+        } else if (!req.urlParsed.params.emailAddress.trim().match(/\.com$|\.org$|\.gov|\.edu$$/i)) {
+            result.result = 'FAIL';
+            result.error = "E-Mail Address doesn't look right, not a .com, .org, .gov or .edu TLD";
+        } else { // now lookup in DB
+            let email = req.urlParsed.params.emailAddress.trim().toLowerCase();
+            let password = req.urlParsed.params.password.trim();
+            let data = await pool.query(`select * from person where person.id = md5('${email}')::uuid`);
+            // check password
+            if (data?.rows?.length) { // found them 
+                tracer.log(data.rows[0].password);
+                if (data.rows[0].password.replace(/-/g, '') != password) {
+                    result.result = 'FAIL';
+                    result.error = 'Bad password';
+                } else {
+                    result.sessionId = md5(req.urlParsed.params.emailAddress.trim().toLowerCase() + (new Date()).toISOString());
+                    if (result.sessionId) {
+                            res.setHeader("Set-Cookie", `Snagajob_sessionId=${result.sessionId}; Domain=.sagers.org; Path=/; Max-Age=86400;`);
+                    }
+                    res.setHeader("Content-Type", "application/json");
+                    await pool.query(`update person set id_session = '${result.sessionId}' where id = md5('${email}')::uuid`);
+                    result.result = 'OK';
+                    result.redirect = '/jobseeker/searchJobs.html'
+                    result.data = data;
+                }
+            }
+            else {
+                tracer.log('Job seeker not found');
+                result.result = 'NOT FOUND';
+                if (email) {
+                    result.sessionId = md5(email + (new Date()).toISOString());
+                    if (result.sessionId) {
+                        res.setHeader("Set-Cookie", `Snagajob_sessionId=${result.sessionId}; Domain=.sagers.org; Path=/; Max-Age=86400;`);
+                    }
+                    let sql = `
+                        insert into person
+                        (id,email,password,name_first,name_last,login_type,id_session)
+                        values (
+                            md5('${email}')::uuid
+                            ,'${email}'
+                            ,'${password}'
+                            ,'${req.urlParsed.params.nameFirst.trim()}'
+                            ,'${req.urlParsed.params.nameLast.trim()}'
+                            ,'JOBSEEKER'
+                            ,'${result.sessionId}'
+                        )
+                    `;
+                    tracer.log(sql);
+                    let data = await pool.query(sql);
+                    tracer.log(JSON.stringify(data,null,4));
+                    if (data.rowCount == 1) {
+                        result.redirect = '/jobseeker/searchJobs.html';
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        result.result = 'FAIL';
+        result.error = error.message;
+        result.stack = error.stack;
+    }
+    res.setHeader("Content-Type", "application/json");
+    res.writeHead(200);
     res.end(JSON.stringify(result, null, 4));
     return;
 }
@@ -155,8 +299,8 @@ async function loginEmployer(req, res) {
             result.error = "E-Mail Address doesn't look right, not a .com, .org, .gov or .edu TLD";
         } else { // now lookup in DB
             let email = req.urlParsed.params.emailAddress.trim().toLowerCase();
-            let password = req.urlParsed.params.password.trim().toLowerCase();
-            let data = await pool.query(`select * from person where id = md5('${email}')::uuid`);
+            let password = req.urlParsed.params.password.trim();
+            let data = await pool.query(`select * from person left outer join employer on person.id_employer = employer.id where person.id = md5('${email}')::uuid`);
             // check password
             if (data?.rows?.length) { // found them 
                 tracer.log(data.rows[0].password);
@@ -175,6 +319,35 @@ async function loginEmployer(req, res) {
                     result.data = data;
                 }
             }
+            else {
+                tracer.log('Employer not found');
+                result.result = 'NOT FOUND';
+                if (email) {
+                    result.sessionId = md5(email + (new Date()).toISOString());
+                    if (result.sessionId) {
+                        res.setHeader("Set-Cookie", `Snagajob_sessionId=${result.sessionId}; Domain=.sagers.org; Path=/; Max-Age=86400;`);
+                    }
+                    let sql = `
+                        insert into person
+                        (id,email,password,name_first,name_last,login_type,id_session)
+                        values (
+                            md5('${email}')::uuid
+                            ,'${email}'
+                            ,'${password}'
+                            ,'${req.urlParsed.params.nameFirst.trim()}'
+                            ,'${req.urlParsed.params.nameLast.trim()}'
+                            ,'EMPLOYER'
+                            ,'${result.sessionId}'
+                        )
+                    `;
+                    tracer.log(sql);
+                    let data = await pool.query(sql);
+                    tracer.log(JSON.stringify(data,null,4));
+                    if (data.rowCount == 1) {
+                        result.redirect = '/jobseeker/searchJobs.html';
+                    }
+                }
+            }
         }
     } catch (error) {
         result.result = 'FAIL';
@@ -185,12 +358,6 @@ async function loginEmployer(req, res) {
     res.writeHead(200);
     res.end(JSON.stringify(result, null, 4));
     return;
-}
-
-async function loginJobSeeker(req, res) {
-    res.setHeader("Content-Type", "application/json");
-    res.writeHead(200);
-    res.end(JSON.stringify(req.urlParsed, null, 4));
 }
 
 const host = '0.0.0.0';
