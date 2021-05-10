@@ -85,31 +85,39 @@
                     for (var i in data.data) {
                         var d = data.data[i];
                         console.log(d);
-                        var tr = document.querySelector('#job-table').insertRow(-1);
+                        var tr = document.querySelector('#application-table').insertRow(-1);
                         tr.setAttribute('id_job',d.id)
                         tr.style['background-color'] = '#d0d0d0';
-                        var tda = tr.insertCell(-1);
-                        tda.innerHTML = '<input type=button value="?s" onClick="showJobQuestions(this)">';
-                        tda.style.width = '3%';
+
                         var td0 = tr.insertCell(-1);
-                        td0.innerHTML = d.identifier;
-                        td0.style.width = '10%';
+                        td0.innerHTML = d.name_first + ' ' + d.name_last;
+                        td0.style.width = '7%';
+
                         var td1 = tr.insertCell(-1);
-                        td1.innerHTML = d.date_created.substr(0,10);
-                        td1.style.width = '10%';
+                        td1.innerHTML = d.date_applied.substr(0,10);
+                        td1.style.width = '7%';
+
                         var td2 = tr.insertCell(-1);
-                        td2.innerHTML = d.title;
-                        td2.style.width = '30%';
+                        td2.innerHTML = d.result;
+                        td2.style.width = '7%';
+
                         var td3 = tr.insertCell(-1);
-                        td3.innerHTML = '<textarea style="width:100%;height:60px">'+d.description+'</textarea>';
-                        td3.style.width = '50%';
-                        td3.style['max-width'] = '50%';
-                        var tr2 =document.querySelector('#job-table').insertRow(-1);
-                        tr2.style.display = 'none';
-                        tr2.style['background-color'] = '#d0d0d0';
-                        tr2.setAttribute('id','job_questions_'+d.id);
-                        // td3.style['height'] = '30px';
-                        // td3.style.overflow = 'hidden';
+                        td3.innerHTML = d.identifier;
+                        td3.style.width = '7%';
+
+                        var td4 = tr.insertCell(-1);
+                        td4.innerHTML = d.title;
+                        td4.style.width = '25%';
+                        td4.style['max-width'] = '25%';
+                        td4.style.overflow = 'hidden'
+                        td4.style['white-space'] = 'nowrap';
+
+                        var td5 = tr.insertCell(-1);
+                        td5.innerHTML = d.description;
+                        td5.style.width = '47%';
+                        td5.style['max-width'] = '47%';
+                        td5.style.overflow = 'hidden';
+                        td5.style['white-space'] = 'nowrap';
                     }
                 }
             });
@@ -133,7 +141,7 @@
     <h2 id=error style="display:none;color:red">
     </h2>
 
-    <table id=job-table style="width:100%">
+    <table id=application-table style="width:100%;table-layout: fixed;">
     </table>
     </body>
 

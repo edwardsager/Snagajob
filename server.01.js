@@ -292,9 +292,10 @@ async function listApplications(req,res) {
     res.writeHead(200);
     let result = { result: 'OK', session: req.session };
     let sql = `
-        select applications.*, jobs.title as title, jobs.description as description
+        select applications.*, person.name_first, person.name_last, jobs.title, jobs.description, jobs.identifier
         from applications
         left outer join jobs on applications.id_job = jobs.id
+        left outer join person on applications.id_person = person.id
         where applications.id_employer = '${req.session.id_employer}'::uuid
     `;
     tracer.log(sql);
