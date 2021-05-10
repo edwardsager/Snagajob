@@ -20,6 +20,10 @@
 
         }
 
+        function applications(){
+            window.location = '/employer/listApplications.html'
+        }
+
         function trHide(self) {
             console.log(self);
             self.style.display = 'none';
@@ -120,8 +124,8 @@
 <body>
     <table style="width:100%;font-family:verdana;background-color:rgb(223, 248, 223);border-collapse:separate">
         <tr>
-            <td style="width:15%"><input type=button value='Add Job' onClick="addJob()"></td>
-            <td style="width:70%;text-align:center"><h1>Employer Job List</h1><span id=employer-name>Employer Name</span></td>
+            <td style="width:15%"><input type=button value='Applications' onClick="applications()"><input type=button value='Add Job' onClick="addJob()"></td>
+            <td style="width:70%;text-align:center"><h1>Employer Job List</h1><span id=employer-name></span></td>
             <td style="width:15%;text-align:right"><input type=button value='Log Out' onClick="logout()"></td>
         </tr>
     </table>

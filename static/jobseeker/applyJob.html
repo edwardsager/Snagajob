@@ -18,13 +18,23 @@
 			});
 		}
 
+		var session;	// global for various purposes
+		function getInfo(){
+			var data = {}
+			ajaxJSON('/api/session', data, function (data) {
+				console.log(data);
+				document.querySelector('#jobseeker-name').innerHTML = data.session.name_first + ' ' + data.session.name_last;
+				session = data.session;
+			});
+		}
+
 		function submitApplication() {
 			console.log('submitApplication');
 			var inputs = document.querySelectorAll('#question-table input');
 			// console.log(inputs);
 			// console.log(document.querySelector('#job-id'));
 			// console.log(document.querySelector('#job-id').value);
-			var data = { idJob:document.querySelector('#job-id').value };
+			var data = { idJob:document.querySelector('#job-id').value, idPerson:session.id_person };
 			for (var i in inputs) {
 				var inp = inputs[i];
 				//console.log(inp);
@@ -108,6 +118,7 @@
 
 		document.addEventListener("DOMContentLoaded", function () {
 			queryParameters = parseQueryParams();
+			getInfo();
 			console.log(queryParameters);
 			showJobQuestions(queryParameters.params.jobId);
 		});
@@ -120,7 +131,7 @@
 		<tr>
 			<td style="width:15%"><input type=button value='Apply' onClick="submitApplication()"></p>
 			<td style="width:70%;text-align:center">
-				<h1>Job Application</h1><p id=employer-name>Employer Name</p><p id=job-title>Job Title</p><p id=job-description>Job Title</h4>
+				<h2>Job Application (<span id=jobseeker-name></span>)</h2><p id=employer-name>Employer Name</p><p id=job-title>Job Title</p><p id=job-description>Job Title</h4>
 			</td>
 			<td style="width:15%;text-align:right"><input type=button value='Log Out' onClick="logout()"></td>
 		</tr>

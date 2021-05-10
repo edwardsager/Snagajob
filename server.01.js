@@ -8,7 +8,6 @@ if (process.env["NODE_PATH"]) {
 }
 const http = require("http");
 const tracer = require("tracer").console({ transport: function(data) { process.stdout.write(data.output + "\n") }, format: "{{timestamp}} {{file}}:{{line}} {{method}} {{message}}", dateformat: "HH:MM:ss.l", });
-const util = require("util");
 const fs = require("fs");
 const md5 = require("md5");
 const mime = require('mime-types');
@@ -27,6 +26,8 @@ let staticDir = 'static';
 function handlerPromisified(req, res) {
     return new Promise(async(resolve, reject) => {
         try {
+
+            // extensively parse the URL and provide convenience variables
             let urlDerived = 'http://' + req.headers.host + req.url;
             req.urlParsed = parseURLextended(urlDerived);
             req.headers.cookies = {};
@@ -46,9 +47,10 @@ function handlerPromisified(req, res) {
             }
             tracer.log(JSON.stringify(req.headers.cookies,null,4));
             tracer.log(req.urlParsed.path);
-            // check for a session id in cookies, then look it up , then determine if employer or user
+
+            // check for the session id in cookies, then look it up , then determine if employer or user
             if (req?.headers?.cookies?.Snagajob_sessionId) {
-                let sql = `select * from person left outer join employer on person.id_employer = employer.id where person.id_session = '${req.headers.cookies.Snagajob_sessionId}'::uuid`;
+                let sql = `select person.id as id_person, * from person left outer join employer on person.id_employer = employer.id where person.id_session = '${req.headers.cookies.Snagajob_sessionId}'::uuid`;
                 tracer.log(sql);
                 let data = await pool.query(sql);
                 if (data?.rows?.length) { // found them 
@@ -56,12 +58,28 @@ function handlerPromisified(req, res) {
                     tracer.log(JSON.stringify(req.session,null,4));
                 }
             }
+
+            // redirect when no explicit path specified of session data indicates it
             if (req.urlParsed.path == '' || req.urlParsed.path == '/') {
                 if (req?.session?.login_type?.match(/EMPLOYER/)) {
                     req.urlParsed.path = '/employer/listJobs.html';
-                }
+                    // redirect to full url
+                    res.setHeader("Location", req.urlParsed.path);
+                    res.writeHead(302);
+                    res.end();
+                    // logging here
+                    resolve();
+                    return;
+            }
                 if (req?.session?.login_type?.match(/JOBSEEKER/)) {
                     req.urlParsed.path = '/jobseeker/searchJobs.html';
+                    // redirect to full url
+                    res.setHeader("Location", req.urlParsed.path);
+                    res.writeHead(302);
+                    res.end();
+                    // logging here
+                    resolve();
+                    return;
                 }
                 else {
                   req.urlParsed.path = '/index.html';
@@ -71,14 +89,18 @@ function handlerPromisified(req, res) {
             tracer.log(req.headers);
             let staticFullPath = staticDir + req.urlParsed.path;
             tracer.log(staticFullPath);
+
+            // decide what to do based on the path, first determine if an endpoint, a static resource or else 404 it
             if (endpoints[req.urlParsed.path] && typeof endpoints[req.urlParsed.path] == 'function') {
+                // cehck if endpoint function defined in endpoints object
+                // if so, call the function and pass req(+enhancements),res from http server
                 tracer.log(`Calling endpoint '${req.urlParsed.path}'`);
-                let result = await endpoints[req.urlParsed.path](req, res);
-                tracer.log(result);
+                await endpoints[req.urlParsed.path](req, res);
                 resolve();
-                return;
                 // logging here
+                return;
             } else if (fs.existsSync(staticFullPath)) {
+                // check if URL path match path/file in static content directory
                 let contentType = mime.lookup(staticFullPath);
                 let stream = fs.createReadStream(staticFullPath);
                 stream.on('error', (err) => {
@@ -87,12 +109,14 @@ function handlerPromisified(req, res) {
                         res.writeHead(500);
                         res.end(error.message)
                         resolve();
+                        // logging here
                         return;
                     } catch (error) {
                         tracer.log(error.message + "\n" + error.stack);
                         res.writeHead(500);
                         res.end(error.message);
                         resolve();
+                        // logging here
                         return;
                     }
                 });
@@ -103,42 +127,138 @@ function handlerPromisified(req, res) {
                 res.writeHead(200);
                 stream.pipe(res);
                 resolve();
+                // logging here
                 return;
             } else {
                 res.setHeader("Content-Type", "text/plain");
                 res.writeHead(404);
                 res.end(JSON.stringify(req.urlParsed, null, 4));
                 resolve();
-                return;
                 //logging here
+                return;
             }
         } catch (error) {
             tracer.log(error.message + "\n" + error.stack);
-            if (! res.headersSent) {
+            if (! res.headersSent) {    // might end up here due to error above where header already sent, prevent error being thrown by checking this
                 res.setHeader("Content-Type", "text/plain");
                 res.writeHead(500);
             }
             res.end(error.message + "\n" + error.stack);
             resolve();
-            return;
+                //logging here
+                return;
         }
     });
 }
 
 let endpoints = {
     '/api/url': url,
+    '/api/session': session,
     '/api/logout': logout,
     '/api/employer/login': loginEmployer,
     '/api/jobseeker/login': loginJobSeeker,
     '/api/employer/listJobs': listJobs,
+    '/api/employer/listApplications': listApplications,
     '/api/employer/listJobQuestions': listJobQuestions,
     '/api/jobseeker/searchJobs': searchJobs,
+    '/api/jobseeker/applyJob': applyJob,
+}
+
+async function session(req, res) {
+    res.setHeader("Content-Type", "application/json");
+    res.writeHead(200);
+    res.end(JSON.stringify({ session:req.session }, null, 4));
+    return;
 }
 
 async function url(req, res) {
     res.setHeader("Content-Type", "application/json");
     res.writeHead(200);
     res.end(JSON.stringify(req.urlParsed, null, 4));
+    return;
+}
+
+async function applyJob(req, res) {
+    let result = { answers:[], session: req.session, url:req.urlParsed };
+    try {
+        tracer.log(JSON.stringify(req?.urlParsed?.params,null,4));
+        let idJob = req?.urlParsed?.params?.idJob;
+        let sql = `select * from jobs where id = '${idJob}'`;
+        tracer.log(sql);
+        let dataJob = await pool.query(sql);
+        tracer.log(JSON.stringify(dataJob.rows,null,4));
+
+        sql = `select * from job_questions where id_job = '${idJob}'`;
+        tracer.log(sql);
+        let data = await pool.query(sql);
+        tracer.log(JSON.stringify(data.rows,null,4))
+        // check all questions came in
+        let missing = data.rows.length;
+        for (let row of data.rows) {
+            tracer.log(row.id);
+            if (row.id in req?.urlParsed?.params) {
+                --missing;
+            }
+            else {
+                tracer.log('not in params');
+            }
+        }
+        if (missing) {
+            result.error = `There are ${missing} missing questions from the application`;
+            res.setHeader("Content-Type", "application/json");
+            res.writeHead(500);
+            res.end(JSON.stringify(result, null, 4));
+            return;
+        }
+        // now run all the regexes agains anwers and determine result
+        result.finalResult = 'ACCEPTED';
+        let answers = {};
+        let questions = {};
+        for (let row of data.rows) {
+            let regex = new RegExp(row.answer_regex,row.regex_flags);
+            tracer.log(regex);
+            let answer = req?.urlParsed?.params[row.id];
+            tracer.log(answer);
+            answers[row.id] = answer;
+            questions[row.id] = row;
+            if (answer.match(regex)) {
+                result.answers.push({result:'OK',idQuestion:row.id});
+            }
+            else {
+                result.answers.push({result:'FAIL',idQuestion:row.id});
+                result.finalResult = 'REJECTED';
+            }
+        }
+        // save the application
+        let save = {
+            id:md5(req?.urlParsed?.params?.idPerson+req?.urlParsed?.params?.idJob),
+            id_job:req?.urlParsed?.params?.idJob,
+            id_person:req?.urlParsed?.params?.idPerson,
+            answers:answers,
+            questions:questions,
+            result:result.finalResult,
+            id_employer:dataJob.rows[0].id_employer
+        }
+        sql = `
+            insert into applications (id,id_job,id_person,answers,questions,result,date_applied,id_employer)
+            values ($1,$2,$3,$4,$5,$6,now(),$7)
+            on conflict(id) do update set date_applied = now(), id_job = $2, id_person = $3, answers = $4, questions = $5, result = $6, id_employer = $7
+        `;
+        tracer.log(sql);
+        let upsert = await pool.query(sql, [save.id,save.id_job,save.id_person,save.answers,save.questions,save.result,save.id_employer]);
+        tracer.log(JSON.stringify(upsert,null,4));
+    }
+    catch(error) {
+        result.error = error.message;
+        result.stack = error.stack
+        res.setHeader("Content-Type", "application/json");
+        res.writeHead(500);
+        res.end(JSON.stringify(result, null, 4));
+        return;
+    }
+    res.setHeader("Content-Type", "application/json");
+    res.writeHead(200);
+    res.end(JSON.stringify(result, null, 4));
     return;
 }
 
@@ -167,9 +287,16 @@ async function listJobs(req,res) {
     return;
 }
 
-async function searchJobs(req,res) {
+async function listApplications(req,res) {
+    res.setHeader("Content-Type", "application/json");
+    res.writeHead(200);
     let result = { result: 'OK', session: req.session };
-    let sql = `select * from jobs`;
+    let sql = `
+        select applications.*, jobs.title as title, jobs.description as description
+        from applications
+        left outer join jobs on applications.id_job = jobs.id
+        where applications.id_employer = '${req.session.id_employer}'::uuid
+    `;
     tracer.log(sql);
     let data = await pool.query(sql);
     tracer.log(JSON.stringify(data,null,4))
@@ -177,6 +304,25 @@ async function searchJobs(req,res) {
         result.data = data.rows;
     }
     tracer.log(JSON.stringify(result,null,4))
+    res.end(JSON.stringify(result, null, 4));
+    return;
+}
+
+async function searchJobs(req,res) {
+    let result = { result: 'OK', session: req.session };
+    let sql = `select * from jobs`;
+    tracer.log(JSON.stringify(req?.urlParsed,null,4));
+    if (req?.urlParsed?.params?.query) {
+        let query = req.urlParsed.params.query.trim().replace(/\s+/g,'\\s+');
+        sql += ` where title ~* '${query}' or description ~* '${query}'`;
+    }
+    tracer.log(sql);
+    let data = await pool.query(sql);
+    //tracer.log(JSON.stringify(data,null,4))
+    if (data?.rows?.length) { // found them 
+        result.data = data.rows;
+    }
+    //tracer.log(JSON.stringify(result,null,4))
     res.setHeader("Content-Type", "application/json");
     res.writeHead(200);
     res.end(JSON.stringify(result, null, 4));
@@ -186,7 +332,8 @@ async function searchJobs(req,res) {
 async function listJobQuestions(req,res) {
     try {
         let result = { result: 'OK', session: req.session };
-        let sql = `select * from job_questions where id_job = '${req?.urlParsed?.params?.idJob}'::uuid`;
+        let jobId = req?.urlParsed?.params?.idJob;
+        let sql = `select * from job_questions where id_job = '${jobId}'::uuid`;
         tracer.log(sql);
         let data = await pool.query(sql);
         tracer.log(JSON.stringify(data,null,4))
@@ -194,7 +341,12 @@ async function listJobQuestions(req,res) {
             result.data = data.rows;
         }
         result.idJob = req.urlParsed.params.idJob;
-        tracer.log(JSON.stringify(result,null,4))
+
+        sql = `select * from jobs left outer join employer on jobs.id_employer = employer.id where jobs.id = '${req?.urlParsed?.params?.idJob}'`;
+        let dataJ = await pool.query(sql);
+        result.dataJob = dataJ.rows[0];
+
+        //tracer.log(JSON.stringify(result,null,4))
         res.setHeader("Content-Type", "application/json");
         res.writeHead(200);
         res.end(JSON.stringify(result, null, 4));
@@ -360,18 +512,6 @@ async function loginEmployer(req, res) {
     return;
 }
 
-const host = '0.0.0.0';
-const port = 80;
-
-let server = http.createServer();
-server.on('request', async(req, res) => {
-    await handlerPromisified(req, res);
-});
-
-server.listen(port, host, () => {
-    console.log(`Server is running on http://${host}:${port}`);
-});
-
 function parseURLextended(url, origin) {
     try {
         let parsedURLObj = new URL(url, origin);
@@ -441,3 +581,16 @@ function parseURLextended(url, origin) {
         return error;
     }
 }
+
+// define the service
+const host = '0.0.0.0';
+const port = 80;
+
+let server = http.createServer();
+server.on('request', async(req, res) => {
+    await handlerPromisified(req, res);
+});
+
+server.listen(port, host, () => {
+    console.log(`Server is running on http://${host}:${port}`);
+});

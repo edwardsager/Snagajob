@@ -1,7 +1,7 @@
 <html>
 
 <head>
-    <title>Employer Job List</title>
+    <title>Employer Applications</title>
     <link rel="stylesheet" href="/index.00.css">
     <script type="text/javascript" src="/js/ajax.js"></script>
     <script type="text/javascript" src="/js/md5.js"></script>
@@ -20,8 +20,8 @@
 
         }
 
-        function applications(){
-            window.location = '/employer/listApplications.html'
+        function jobList(){
+            window.location = '/employer/listJobs.html'
         }
 
         function trHide(self) {
@@ -70,10 +70,10 @@
             });
         }
 
-        function showJobs(){
-            console.log('showJobs()');
+        function showApplications(){
+            console.log('showApplications()');
             var data = {};
-            ajaxJSON('/api/employer/listJobs', data, function(data) {
+            ajaxJSON('/api/employer/listApplications', data, function(data) {
                 console.log(data);
                 if (data.session && data.session.name_employer) {
                     document.querySelector('#employer-name').innerHTML = data.session && data.session.name_employer;
@@ -116,7 +116,7 @@
         }
 
         document.addEventListener("DOMContentLoaded", function() {
-            showJobs();
+            showApplications();
         });
     </script>
 </head>
@@ -124,8 +124,8 @@
 <body>
     <table style="width:100%;font-family:verdana;background-color:rgb(223, 248, 223);border-collapse:separate">
         <tr>
-            <td style="width:15%"><input type=button value='Applications' onClick="applications()"><input type=button value='Add Job' onClick="addJob()"></td>
-            <td style="width:70%;text-align:center"><h1>Employer Job List</h1><span id=employer-name></span></td>
+            <td style="width:15%"><input type=button value='Job List' onClick="jobList()"></td>
+            <td style="width:70%;text-align:center"><h1>Employer Applications</h1><span id=employer-name></span></td>
             <td style="width:15%;text-align:right"><input type=button value='Log Out' onClick="logout()"></td>
         </tr>
     </table>

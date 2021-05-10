@@ -1,136 +1,170 @@
 <html>
-
 <head>
-    <title>Job saerch</title>
-    <link rel="stylesheet" href="/index.00.css">
-    <script type="text/javascript" src="/js/ajax.js"></script>
-    <script type="text/javascript" src="/js/md5.js"></script>
-    <script>
-        function logout(){
-            var data = {};
-            ajaxJSON('/api/logout', data, function(data) {
-                console.log(data);
-                if (data.redirect) {
-                    window.location = data.redirect;
-                }
-            });
-        }
+	<title>Job saerch</title>
+	<link rel="stylesheet" href="/index.00.css">
+	<script type="text/javascript" src="/js/ajax.js"></script>
+	<script type="text/javascript" src="/js/md5.js"></script>
+	<script>
+		function logout() {
+			var data = {};
+			ajaxJSON('/api/logout', data, function (data) {
+				console.log(data);
+				if (data.redirect) {
+					window.location = data.redirect;
+				}
+			});
+		}
 
-        function addJob(){
+		function addJob() {
 
-        }
+		}
 
-        function trHide(self) {
-            console.log(self);
-            self.style.display = 'none';
-        }
+		function trHide(self) {
+			console.log(self);
+			self.style.display = 'none';
+		}
 
-        function showJobQuestions(self){
-            var tr = self.closest('tr');
-            console.log(tr);
-            var idJob = tr.getAttribute('id_job');
-            console.log(idJob);
-            var data = { idJob:idJob }
-            ajaxJSON('/api/jobseeker/listJobQuestions', data, function(data) {
-                console.log(data);
-                var tr2 = document.querySelector('#job_questions_'+idJob);
-                console.log(tr2);
-                tr2.innerHTML = '';
-                tr2.setAttribute('idJob',data.idJob);
-                tr2.style.display = 'table-row';
-                tr2.setAttribute('onclick','trHide(this)');
-                var td2 = tr2.insertCell(-1);
-                td2.setAttribute('colspan',5);
-                var table = document.createElement('TABLE');
-                table.style.width = '100%';
-                td2.appendChild(table);
-                if (data?.data?.length) {
-                    for (var i in data.data) {
-                        var d = data.data[i];
-                        console.log(d);
-                        var trq = table.insertRow(-1);
-                        trq.setAttribute('id_job',data.idJob)
-                        trq.setAttribute('id_question',d.id)
-                        trq.style['background-color'] = '#b0b0b0';
-                        var td0 = trq.insertCell(-1);
-                        td0.innerHTML = d.question;
-                        td0.style.width = '70%';
-                        var td1 = trq.insertCell(-1);
-                        td1.innerHTML = d.answer_regex;
-                        td1.style.width = '20%';
-                        var td2 = trq.insertCell(-1);
-                        td2.innerHTML = d.regex_flags;
-                        td2.style.width = '10%';
-                    }
-                }
-            });
-        }
+		var session;	// global for various purposes
+		function getInfo(){
+			var data = {}
+			ajaxJSON('/api/session', data, function (data) {
+				console.log(data);
+				document.querySelector('#jobseeker-name').innerHTML = data.session.name_first + ' ' + data.session.name_last;
+				session = data.session;
+			});
+		}
 
-        function searchJobs(){
-            console.log('searchJobs()');
-            var data = {};
-            ajaxJSON('/api/jobseeker/searchJobs', data, function(data) {
-                console.log(data);
-                if (data.session && (data.session.name_first || data.session.name_last)) {
-                    document.querySelector('#jobseeker-name').innerHTML = data.session.name_first + ' ' + data.session.name_last;
-                }
-                if (data.redirect) {
-                    window.location = data.redirect;
-                }
-                if (data?.data?.length) {
-                    for (var i in data.data) {
-                        var d = data.data[i];
-                        console.log(d);
-                        var tr = document.querySelector('#job-table').insertRow(-1);
-                        tr.setAttribute('id_job',d.id)
-                        tr.style['background-color'] = '#d0d0d0';
-                        var tda = tr.insertCell(-1);
-                        tda.innerHTML = '<input type=button value="?s" onClick="showJobQuestions(this)">';
-                        tda.style.width = '3%';
-                        var td0 = tr.insertCell(-1);
-                        td0.innerHTML = d.identifier;
-                        td0.style.width = '10%';
-                        var td1 = tr.insertCell(-1);
-                        td1.innerHTML = d.date_created.substr(0,10);
-                        td1.style.width = '10%';
-                        var td2 = tr.insertCell(-1);
-                        td2.innerHTML = d.title;
-                        td2.style.width = '30%';
-                        var td3 = tr.insertCell(-1);
-                        td3.innerHTML = '<textarea style="width:100%;height:60px">'+d.description+'</textarea>';
-                        td3.style.width = '50%';
-                        td3.style['max-width'] = '50%';
-                        var tr2 =document.querySelector('#job-table').insertRow(-1);
-                        tr2.style.display = 'none';
-                        tr2.style['background-color'] = '#d0d0d0';
-                        tr2.setAttribute('id','job_questions_'+d.id);
-                        // td3.style['height'] = '30px';
-                        // td3.style.overflow = 'hidden';
-                    }
-                }
-            });
-        }
+		function showJobQuestions(self) {
+			var tr = self.closest('tr');
+			console.log(tr);
+			var idJob = tr.getAttribute('id_job');
+			console.log(idJob);
+			var data = { idJob: idJob }
+			ajaxJSON('/api/jobseeker/listJobQuestions', data, function (data) {
+				console.log(data);
+				var tr2 = document.querySelector('#job_questions_' + idJob);
+				console.log(tr2);
+				tr2.innerHTML = '';
+				tr2.setAttribute('idJob', data.idJob);
+				tr2.style.display = 'table-row';
+				tr2.setAttribute('onclick', 'trHide(this)');
+				var td2 = tr2.insertCell(-1);
+				td2.setAttribute('colspan', 5);
+				var table = document.createElement('TABLE');
+				table.style.width = '100%';
+				td2.appendChild(table);
+				if (data?.data?.length) {
+					for (var i in data.data) {
+						var d = data.data[i];
+						console.log(d);
+						var trq = table.insertRow(-1);
+						trq.setAttribute('id_job', data.idJob)
+						trq.setAttribute('id_question', d.id)
+						trq.style['background-color'] = '#b0b0b0';
+						var td0 = trq.insertCell(-1);
+						td0.innerHTML = d.question;
+						td0.style.width = '70%';
+						var td1 = trq.insertCell(-1);
+						td1.innerHTML = d.answer_regex;
+						td1.style.width = '20%';
+						var td2 = trq.insertCell(-1);
+						td2.innerHTML = d.regex_flags;
+						td2.style.width = '10%';
+					}
+				}
+			});
+		}
 
-        document.addEventListener("DOMContentLoaded", function() {
-            searchJobs();
-        });
-    </script>
+		function searchJobs() {
+			console.log('searchJobs()');
+			var data = {};
+			document.querySelector('#job-table').innerHTML = '';
+			data.query = document.querySelector('#query').value;
+			ajaxJSON('/api/jobseeker/searchJobs', data, function (data) {
+				console.log(data);
+				if (data.session && (data.session.name_first || data.session.name_last)) {
+					document.querySelector('#jobseeker-name').innerHTML = data.session.name_first + ' ' + data.session.name_last;
+				}
+				if (data.redirect) {
+					window.location = data.redirect;
+				}
+				if (data?.data?.length) {
+					for (var i in data.data) {
+						var d = data.data[i];
+						console.log(d);
+						var tr = document.querySelector('#job-table').insertRow(-1);
+						tr.setAttribute('id_job', d.id)
+						tr.style['background-color'] = '#d0d0d0';
+						var tda = tr.insertCell(-1);
+						tda.innerHTML = '<input type=button value="Apply" onClick="jobApplication(this)" jobId=' + d.id + '>';
+						tda.style.width = '3%';
+						var td0 = tr.insertCell(-1);
+						td0.innerHTML = d.identifier;
+						td0.style.width = '10%';
+						var td1 = tr.insertCell(-1);
+						td1.innerHTML = d.date_created.substr(0, 10);
+						td1.style.width = '10%';
+						var td2 = tr.insertCell(-1);
+						td2.innerHTML = d.title;
+						td2.style.width = '30%';
+						var td3 = tr.insertCell(-1);
+						td3.innerHTML = '<textarea style="width:100%;height:60px">' + d.description + '</textarea>';
+						td3.style.width = '50%';
+						td3.style['max-width'] = '50%';
+						var tr2 = document.querySelector('#job-table').insertRow(-1);
+						tr2.style.display = 'none';
+						tr2.style['background-color'] = '#d0d0d0';
+						tr2.setAttribute('id', 'job_questions_' + d.id);
+						// td3.style['height'] = '30px';
+						// td3.style.overflow = 'hidden';
+					}
+				}
+			});
+		}
+
+		function jobApplication(self) {
+			var jobId = self.getAttribute('jobId');
+			window.location = '/jobseeker/applyJob.html?jobId=' + jobId;
+		}
+
+		document.addEventListener("DOMContentLoaded", function () {
+			document.getElementById('query')
+				.addEventListener('keyup', function (event) {
+					if (event.code === 'Enter') {
+						event.preventDefault();
+						searchJobs();
+					}
+				});
+			getInfo();
+		});
+	</script>
 </head>
 
 <body>
-    <table style="width:100%;font-family:verdana;background-color:rgb(223, 248, 223);border-collapse:separate">
-        <tr>
-            <td style="width:15%"><input type=button value='Add Job' onClick="addJob()"></td>
-            <td style="width:70%;text-align:center"><h1>Job Search</h1><span id=jobseeker-name>Job Seeker Name</span></td>
-            <td style="width:15%;text-align:right"><input type=button value='Log Out' onClick="logout()"></td>
-        </tr>
-    </table>
-    <br>
-    <h2 id=error style="display:none;color:red">
-    </h2>
+	<table style="width:100%;font-family:verdana;background-color:rgb(223, 248, 223);border-collapse:separate">
+		<tr>
+			<td style="width:15%"></td>
+			<td style="width:70%;text-align:center">
+				<h1>Job Search</h1><span id=jobseeker-name>Job Seeker Name</span>
+			</td>
+			<td style="width:15%;text-align:right"><input type=button value='Log Out' onClick="logout()"></td>
+		</tr>
+	</table>
+	<br>
+	<h2 id=error style="display:none;color:red">
+	</h2>
 
-    <table id=job-table style="width:100%">
-    </table>
-    </body>
+	<table>
+		<tr>
+			<td style="width:150px;min-width:150px">Enter Search Terms:</td>
+			<td style="width:100%"><input id=query type=text value="ipsum dolor" style="width:100%"></td>
+			<td style="width:75px;min-width:150px"><input type=button value="Search" onClick="searchJobs()"></td>
+		</tr>
+	</table>
+	<br>
+
+	<table id=job-table style="width:100%">
+	</table>
+</body>
 
 </html>
